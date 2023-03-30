@@ -53,7 +53,7 @@ ax.grid('on', which='minor', axis = 'x')
 ax.grid('off', which='major', axis = 'x')
 plt.show()
 
-"""# 이동평균으로 주가 예측"""
+"""### 이동평균으로 주가 예측"""
 
 from statsmodels.compat import lzip
 import statsmodels.api as sm
@@ -82,7 +82,7 @@ ax.set(xlabel='time', ylabel='price')
 ax.grid(True)
 plt.show()
 
-"""# 단일지수평활법으로 주가 예측"""
+"""### 단일지수평활법으로 주가 예측"""
 
 df1a = df1.reset_index()
 df1a['es'] = None # 단순지수평활법으로 구한 자료 위치
@@ -111,3 +111,43 @@ df1a[-100:].plot(x='Date', y='forecast', ax = ax)
 ax.set(xlabel='time', ylabel='price')
 ax.grid(True)
 plt.show()
+
+"""### 이중지수평활법"""
+
+# 30개 데이터를 이용해 초기 추세 & 절편 생성
+df = df[['Close']]
+df1 = df.iloc[0:31, :]
+df1 = df1.reset_index()
+
+df1['level'] = None
+df1['trend'] = None
+
+t = list(range(1, len(df1)+1))
+result = ols("Close ~ t", data=df1).fit() # 30개 데이터를 이용해 regression
+beta = result.params
+beta
+
+df2 = df.copy()
+
+df2.loc[df2.index[30], 'level']  = beta[0]
+df2.loc[df2.index[30], 'trend']  = beta[1]
+
+n = 31
+alpha = .4
+beta = .4
+for i in range(n, len(df2)):
+    
+    df2.loc[df2.index[i], 'level']= alpha * df2.loc[df2.index[i], 'Close'] + (1-alpha)*(df2.loc[df2.index[i-1], 'level']+df2.loc[df2.index[i-1], 'trend'])
+    df2.loc[df2.index[i], 'trend']= beta *(df2.loc[df2.index[i],'level'] - df2.loc[df2.index[i-1], 'level']) + (1-beta)*(df2.loc[df2.index[i-1],'trend'])
+
+df2['forecast'] = (df2['level'] + df2['trend']).shift(1)
+df2a = df2.dropna()
+df2a = df2a.reset_index()
+
+fig, ax= plt.subplots(nrows=1, figsize=(12, 6), sharex=True)
+df2a.plot(x='Date', y='Close', ax = ax)
+df2a.plot(x='Date', y='forecast', ax = ax)
+ax.set(xlabel='time', ylabel='price')
+ax.grid(True)
+plt.show()
+
